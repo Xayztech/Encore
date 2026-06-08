@@ -1,0 +1,16 @@
+{
+  "name": "xayzenc",
+  "version": "3.0.0",
+  "description": "XayzEnc - Multi-Layer Lua Obfuscator",
+  "main": "server.js",
+  "type": "commonjs",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "keywords": ["lua", "obfuscator", "encoder"],
+  "license": "MIT"
+}

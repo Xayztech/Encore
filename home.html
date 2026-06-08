@@ -1,0 +1,1117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>XayzEnc — Lua Obfuscator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=JetBrains+Mono:wght@300;400;500;700&family=Rajdhani:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+<style>
+:root {
+  --bg:        #04060d;
+  --bg2:       #080c18;
+  --bg3:       #0c1228;
+  --panel:     #0d1426;
+  --panel2:    #111a33;
+  --border:    #1a2a50;
+  --border2:   #243660;
+  --gold:      #c8a84b;
+  --gold2:     #e8c96d;
+  --gold3:     #f5dfa0;
+  --cyan:      #00e5ff;
+  --cyan2:     #4df6ff;
+  --purple:    #7b2fff;
+  --purple2:   #a366ff;
+  --red:       #ff3860;
+  --green:     #00e87a;
+  --text:      #d0daf5;
+  --text2:     #7a8ab8;
+  --text3:     #4a5a88;
+  --glow-gold: 0 0 20px #c8a84b55, 0 0 60px #c8a84b22;
+  --glow-cyan: 0 0 20px #00e5ff55, 0 0 60px #00e5ff22;
+  --glow-pur:  0 0 20px #7b2fff55, 0 0 60px #7b2fff22;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Rajdhani', sans-serif;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* ── Grid BG ── */
+body::before {
+  content: '';
+  position: fixed; inset: 0; z-index: 0;
+  background-image:
+    linear-gradient(rgba(0,229,255,.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,229,255,.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+  pointer-events: none;
+}
+body::after {
+  content: '';
+  position: fixed; inset: 0; z-index: 0;
+  background: radial-gradient(ellipse 80% 60% at 50% -20%, #0d1a4088 0%, transparent 70%);
+  pointer-events: none;
+}
+
+/* ── Scanlines ── */
+.scanlines {
+  position: fixed; inset: 0; z-index: 0; pointer-events: none;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0,0,0,.07) 2px,
+    rgba(0,0,0,.07) 4px
+  );
+}
+
+/* ── Layout ── */
+.wrapper { position: relative; z-index: 1; max-width: 1400px; margin: 0 auto; padding: 0 24px 80px; }
+
+/* ── Header ── */
+header {
+  text-align: center;
+  padding: 56px 0 40px;
+  position: relative;
+}
+.header-badge {
+  display: inline-flex; align-items: center; gap: 8px;
+  background: linear-gradient(135deg, #c8a84b18, #c8a84b08);
+  border: 1px solid #c8a84b44;
+  border-radius: 2px;
+  padding: 4px 16px; margin-bottom: 20px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px; letter-spacing: 3px; color: var(--gold);
+  text-transform: uppercase;
+}
+.header-badge::before { content: '◆'; font-size: 6px; }
+.header-badge::after  { content: '◆'; font-size: 6px; }
+
+h1 {
+  font-family: 'Orbitron', sans-serif;
+  font-weight: 900;
+  font-size: clamp(2.4rem, 6vw, 5rem);
+  line-height: 1;
+  background: linear-gradient(135deg, var(--gold3) 0%, var(--gold) 40%, var(--cyan) 80%);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+  filter: drop-shadow(0 0 30px #c8a84b66);
+  letter-spacing: 4px;
+}
+.subtitle {
+  margin-top: 12px;
+  font-size: 13px; letter-spacing: 4px; text-transform: uppercase;
+  color: var(--text2); font-family: 'JetBrains Mono', monospace;
+}
+.header-line {
+  height: 1px; margin: 32px auto;
+  background: linear-gradient(90deg, transparent, var(--gold) 30%, var(--cyan) 70%, transparent);
+  max-width: 600px; opacity: .6;
+}
+
+/* ── Stats bar ── */
+.stats-bar {
+  display: flex; justify-content: center; gap: 40px; flex-wrap: wrap;
+  margin-bottom: 40px;
+}
+.stat-item { text-align: center; }
+.stat-val {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 1.5rem; font-weight: 700;
+  color: var(--cyan); text-shadow: 0 0 10px var(--cyan);
+}
+.stat-label {
+  font-size: 10px; letter-spacing: 2px; text-transform: uppercase;
+  color: var(--text3); margin-top: 2px;
+}
+
+/* ── Main grid ── */
+.main-grid {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  gap: 20px;
+  align-items: start;
+}
+@media (max-width: 900px) {
+  .main-grid { grid-template-columns: 1fr; }
+}
+
+/* ── Panel ── */
+.panel {
+  background: linear-gradient(145deg, var(--panel) 0%, var(--panel2) 100%);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  position: relative; overflow: hidden;
+}
+.panel::before {
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(135deg, rgba(200,168,75,.04) 0%, transparent 60%);
+}
+.panel-header {
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 10px;
+}
+.panel-icon {
+  width: 28px; height: 28px;
+  background: linear-gradient(135deg, var(--gold), var(--gold2));
+  border-radius: 3px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px;
+  box-shadow: 0 0 12px #c8a84b44;
+}
+.panel-title {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 11px; font-weight: 700;
+  letter-spacing: 2px; text-transform: uppercase;
+  color: var(--gold2);
+}
+.panel-body { padding: 20px; }
+
+/* ── Config panel ── */
+.config-section { margin-bottom: 20px; }
+.config-label {
+  font-size: 10px; letter-spacing: 2px; text-transform: uppercase;
+  color: var(--text3); margin-bottom: 8px;
+  display: flex; align-items: center; gap: 6px;
+}
+.config-label::before { content: ''; width: 3px; height: 3px; background: var(--gold); border-radius: 50%; }
+
+/* Select */
+select, input[type=text], input[type=password] {
+  width: 100%;
+  background: var(--bg3);
+  border: 1px solid var(--border2);
+  border-radius: 3px;
+  color: var(--text);
+  padding: 10px 14px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  outline: none;
+  transition: border-color .2s, box-shadow .2s;
+  appearance: none;
+}
+select:focus, input:focus {
+  border-color: var(--gold);
+  box-shadow: 0 0 0 2px #c8a84b22;
+}
+select { cursor: pointer; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23c8a84b'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; padding-right: 32px; }
+
+/* Level slider */
+.level-wrap {
+  display: flex; align-items: center; gap: 12px;
+}
+.level-num {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 1.4rem; font-weight: 900;
+  color: var(--gold); min-width: 24px; text-align: center;
+  text-shadow: var(--glow-gold);
+}
+input[type=range] {
+  -webkit-appearance: none;
+  flex: 1; height: 4px;
+  background: var(--border2); border-radius: 2px; outline: none;
+}
+input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 16px; height: 16px;
+  background: linear-gradient(135deg, var(--gold), var(--gold2));
+  border-radius: 50%;
+  cursor: pointer;
+  box-shadow: 0 0 8px var(--gold);
+}
+
+/* Level badges */
+.level-desc {
+  font-size: 10px; letter-spacing: 1px;
+  color: var(--text3); margin-top: 6px; text-align: center;
+}
+
+/* Password toggle */
+.pw-toggle {
+  display: flex; gap: 8px; margin-bottom: 10px;
+}
+.pw-btn {
+  flex: 1; padding: 8px; border-radius: 3px;
+  border: 1px solid var(--border2);
+  background: var(--bg3); color: var(--text2);
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 12px; font-weight: 600; letter-spacing: 1px;
+  cursor: pointer; transition: all .2s;
+}
+.pw-btn.active {
+  border-color: var(--gold);
+  background: linear-gradient(135deg, #c8a84b22, #c8a84b11);
+  color: var(--gold);
+  box-shadow: 0 0 10px #c8a84b33;
+}
+
+/* ── Code area ── */
+.code-section { display: flex; flex-direction: column; gap: 16px; }
+
+.code-box {
+  position: relative;
+}
+.code-box-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 16px;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-bottom: none;
+  border-radius: 4px 4px 0 0;
+}
+.code-box-title {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px; color: var(--text3);
+  display: flex; align-items: center; gap: 8px;
+}
+.code-box-title .dot { width: 6px; height: 6px; border-radius: 50%; }
+.dot-r { background: #ff5f57; } .dot-y { background: #febc2e; } .dot-g { background: #28c840; }
+.code-box-actions { display: flex; gap: 8px; }
+
+.action-btn {
+  padding: 4px 12px; border-radius: 2px;
+  border: 1px solid var(--border2);
+  background: transparent; color: var(--text2);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px; letter-spacing: 1px;
+  cursor: pointer; transition: all .2s;
+}
+.action-btn:hover { border-color: var(--gold); color: var(--gold); }
+.action-btn.run-btn { border-color: var(--cyan); color: var(--cyan); }
+.action-btn.run-btn:hover { background: #00e5ff22; box-shadow: 0 0 10px #00e5ff44; }
+
+textarea {
+  width: 100%; min-height: 260px; resize: vertical;
+  background: #060a14;
+  border: 1px solid var(--border);
+  border-top: none;
+  border-radius: 0 0 4px 4px;
+  color: #a8c8ff;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px; line-height: 1.6;
+  padding: 16px;
+  outline: none;
+  transition: border-color .2s;
+  tab-size: 2;
+}
+textarea:focus { border-color: var(--gold); }
+textarea#outputCode { color: #88ff88; min-height: 300px; }
+
+/* ── Run button ── */
+.run-wrap { text-align: center; padding: 8px 0; }
+.main-run {
+  position: relative; overflow: hidden;
+  padding: 16px 64px;
+  background: linear-gradient(135deg, #0d1a40, #1a2a60);
+  border: 1px solid var(--gold);
+  border-radius: 3px;
+  color: var(--gold2);
+  font-family: 'Orbitron', sans-serif;
+  font-size: 14px; font-weight: 700; letter-spacing: 3px;
+  cursor: pointer;
+  transition: all .3s;
+  box-shadow: 0 0 20px #c8a84b33, inset 0 0 20px #c8a84b08;
+  text-transform: uppercase;
+}
+.main-run::before {
+  content: '';
+  position: absolute; top: 0; left: -100%; width: 100%; height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(200,168,75,.15), transparent);
+  transition: left .4s;
+}
+.main-run:hover::before { left: 100%; }
+.main-run:hover {
+  box-shadow: 0 0 40px #c8a84b55, inset 0 0 30px #c8a84b15;
+  border-color: var(--gold2);
+  color: var(--gold3);
+}
+.main-run:active { transform: scale(.98); }
+.main-run:disabled { opacity: .5; cursor: not-allowed; }
+
+/* ── Progress bar ── */
+.progress-wrap {
+  margin: 4px 0;
+  display: none;
+}
+.progress-wrap.show { display: block; }
+.progress-header {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 6px;
+}
+.progress-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px; color: var(--text2);
+}
+.progress-right {
+  display: flex; gap: 16px; align-items: center;
+  font-family: 'JetBrains Mono', monospace; font-size: 11px;
+}
+.progress-pct { color: var(--gold); font-weight: 700; min-width: 38px; text-align: right; }
+.progress-eta { color: var(--text3); }
+
+.progress-track {
+  height: 6px; background: var(--bg3);
+  border-radius: 3px; overflow: hidden;
+  border: 1px solid var(--border);
+  position: relative;
+}
+.progress-fill {
+  height: 100%; width: 0%;
+  background: linear-gradient(90deg, var(--purple), var(--gold), var(--cyan));
+  border-radius: 3px;
+  transition: width .1s linear;
+  position: relative; overflow: hidden;
+}
+.progress-fill::after {
+  content: '';
+  position: absolute; inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,.3), transparent);
+  animation: shimmer 1.2s infinite;
+}
+@keyframes shimmer { 0% { transform: translateX(-100%); } 100% { transform: translateX(100%); } }
+
+.progress-steps {
+  display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap;
+}
+.step-pill {
+  padding: 2px 10px; border-radius: 2px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px; letter-spacing: 1px;
+  border: 1px solid var(--border);
+  color: var(--text3);
+  background: var(--bg3);
+  transition: all .3s;
+}
+.step-pill.active { border-color: var(--gold); color: var(--gold); background: #c8a84b18; }
+.step-pill.done { border-color: var(--green); color: var(--green); background: #00e87a15; }
+
+/* ── Result stats ── */
+.result-stats {
+  display: none; margin-top: 12px;
+  padding: 14px 16px;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  display: none;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 12px;
+}
+.result-stats.show { display: grid; }
+.rs-item { text-align: center; }
+.rs-val {
+  font-family: 'Orbitron', sans-serif;
+  font-size: .9rem; font-weight: 700;
+  color: var(--cyan);
+}
+.rs-key { font-size: 9px; letter-spacing: 1px; text-transform: uppercase; color: var(--text3); margin-top: 2px; }
+
+/* ── Error msg ── */
+.error-msg {
+  padding: 12px 16px;
+  background: #ff386012;
+  border: 1px solid #ff386044;
+  border-radius: 3px;
+  color: var(--red);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  display: none;
+}
+.error-msg.show { display: block; }
+
+/* ── Password modal ── */
+.modal-backdrop {
+  position: fixed; inset: 0; z-index: 1000;
+  background: rgba(4,6,13,.85);
+  backdrop-filter: blur(8px);
+  display: none; align-items: center; justify-content: center;
+}
+.modal-backdrop.show { display: flex; }
+
+.modal {
+  position: relative;
+  background: linear-gradient(145deg, #0d1426, #111a33);
+  border: 1px solid var(--gold);
+  border-radius: 6px;
+  width: 440px; max-width: 90vw;
+  box-shadow: 0 0 60px #c8a84b33, 0 0 120px #c8a84b15;
+  overflow: hidden;
+  cursor: move;
+  user-select: none;
+}
+.modal::before {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0; height: 2px;
+  background: linear-gradient(90deg, var(--purple), var(--gold), var(--cyan));
+}
+.modal-titlebar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  background: linear-gradient(90deg, #c8a84b0d, transparent);
+}
+.modal-title {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 12px; letter-spacing: 2px; color: var(--gold2);
+  display: flex; align-items: center; gap: 8px;
+}
+.modal-controls { display: flex; gap: 6px; }
+.modal-ctrl {
+  width: 24px; height: 24px; border-radius: 3px;
+  border: 1px solid var(--border2);
+  background: var(--bg3); color: var(--text2);
+  font-size: 11px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all .2s;
+}
+.modal-ctrl:hover { border-color: var(--gold); color: var(--gold); }
+.modal-ctrl.close-btn:hover { border-color: var(--red); color: var(--red); }
+
+.modal-body { padding: 24px; }
+.modal-icon {
+  width: 56px; height: 56px; margin: 0 auto 20px;
+  background: linear-gradient(135deg, #c8a84b22, #c8a84b11);
+  border: 1px solid var(--gold);
+  border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 24px;
+  box-shadow: 0 0 20px #c8a84b44;
+}
+.modal-desc {
+  text-align: center; margin-bottom: 20px;
+  font-size: 13px; color: var(--text2); line-height: 1.6;
+}
+.modal-input-wrap { position: relative; }
+.modal-input-wrap input {
+  padding-right: 40px;
+  font-size: 14px; letter-spacing: 3px;
+}
+.pw-eye {
+  position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+  cursor: pointer; color: var(--text3); font-size: 14px;
+  transition: color .2s;
+}
+.pw-eye:hover { color: var(--gold); }
+.modal-actions { display: flex; gap: 10px; margin-top: 16px; }
+.modal-btn {
+  flex: 1; padding: 12px;
+  border-radius: 3px; cursor: pointer;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 11px; font-weight: 700; letter-spacing: 2px;
+  transition: all .2s;
+}
+.modal-btn.cancel { background: transparent; border: 1px solid var(--border2); color: var(--text2); }
+.modal-btn.cancel:hover { border-color: var(--text2); color: var(--text); }
+.modal-btn.confirm {
+  background: linear-gradient(135deg, #c8a84b33, #c8a84b15);
+  border: 1px solid var(--gold);
+  color: var(--gold2);
+  box-shadow: 0 0 15px #c8a84b33;
+}
+.modal-btn.confirm:hover { box-shadow: 0 0 30px #c8a84b55; color: var(--gold3); }
+
+/* Fullscreen modal */
+.modal.fullscreen {
+  width: 90vw; max-width: 90vw;
+  height: 80vh;
+  cursor: default;
+}
+.modal.fullscreen .modal-body {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  height: calc(80vh - 50px);
+}
+
+/* ── Toast ── */
+.toast {
+  position: fixed; bottom: 30px; right: 30px; z-index: 2000;
+  padding: 12px 20px;
+  background: var(--panel);
+  border-radius: 4px;
+  border-left: 3px solid var(--green);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  box-shadow: 0 4px 20px rgba(0,0,0,.5);
+  transform: translateX(120%); transition: transform .3s;
+}
+.toast.show { transform: translateX(0); }
+.toast.error-toast { border-left-color: var(--red); }
+
+/* ── Version badges ── */
+.version-grid {
+  display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px;
+}
+.ver-badge {
+  padding: 3px 10px; border-radius: 2px;
+  border: 1px solid var(--border2);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px; color: var(--text3);
+  cursor: pointer; transition: all .2s;
+}
+.ver-badge.active { border-color: var(--cyan); color: var(--cyan); background: #00e5ff11; }
+
+/* ── Variant cards ── */
+.variant-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 6px;
+}
+.variant-card {
+  padding: 8px 10px; border-radius: 3px;
+  border: 1px solid var(--border);
+  background: var(--bg3);
+  cursor: pointer; transition: all .2s;
+  font-size: 11px; color: var(--text2);
+}
+.variant-card:hover { border-color: var(--gold); color: var(--gold); }
+.variant-card.active { border-color: var(--gold); color: var(--gold); background: #c8a84b12; }
+.variant-card .vc-num { font-family: 'Orbitron', sans-serif; font-size: 9px; color: var(--text3); }
+
+/* ── Footer ── */
+footer {
+  text-align: center; padding: 40px 0 20px;
+  font-size: 11px; color: var(--text3);
+  letter-spacing: 2px;
+  border-top: 1px solid var(--border);
+  margin-top: 60px;
+}
+footer span { color: var(--gold); }
+
+/* ── Animations ── */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.panel { animation: fadeUp .5s ease both; }
+.panel:nth-child(2) { animation-delay: .1s; }
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: .5; }
+}
+.blink { animation: pulse 1.5s infinite; }
+</style>
+</head>
+<body>
+<div class="scanlines"></div>
+
+<div class="wrapper">
+  <!-- Header -->
+  <header>
+    <div class="header-badge">Premium Lua Obfuscation Engine</div>
+    <h1>XAYZENC</h1>
+    <div class="subtitle">Multi-Layer Lua Obfuscator &nbsp;·&nbsp; v3.0.0</div>
+    <div class="header-line"></div>
+    <div class="stats-bar">
+      <div class="stat-item"><div class="stat-val">12</div><div class="stat-label">Variants</div></div>
+      <div class="stat-item"><div class="stat-val">7</div><div class="stat-label">Levels</div></div>
+      <div class="stat-item"><div class="stat-val">6</div><div class="stat-label">Lua Versions</div></div>
+      <div class="stat-item"><div class="stat-val">∞</div><div class="stat-label">Protection</div></div>
+    </div>
+  </header>
+
+  <!-- Main Grid -->
+  <div class="main-grid">
+    <!-- LEFT: Config -->
+    <div>
+      <!-- Config Panel -->
+      <div class="panel" style="margin-bottom:16px">
+        <div class="panel-header">
+          <div class="panel-icon">⚙</div>
+          <div class="panel-title">Configuration</div>
+        </div>
+        <div class="panel-body">
+
+          <!-- Lua Version -->
+          <div class="config-section">
+            <div class="config-label">Lua Version</div>
+            <div class="version-grid" id="versionGrid">
+              <div class="ver-badge active" data-ver="5.1">5.1</div>
+              <div class="ver-badge" data-ver="5.2">5.2</div>
+              <div class="ver-badge" data-ver="5.3">5.3</div>
+              <div class="ver-badge" data-ver="5.4">5.4</div>
+              <div class="ver-badge" data-ver="LuaU">LuaU</div>
+              <div class="ver-badge" data-ver="Roblox">Roblox</div>
+              <div class="ver-badge" data-ver="4">Lua 4</div>
+            </div>
+          </div>
+
+          <!-- Level -->
+          <div class="config-section">
+            <div class="config-label">Protection Level</div>
+            <div class="level-wrap">
+              <input type="range" id="levelSlider" min="1" max="7" value="4"/>
+              <div class="level-num" id="levelNum">4</div>
+            </div>
+            <div class="level-desc" id="levelDesc">Standard — Variable Mangling + String Enc</div>
+          </div>
+
+          <!-- Password -->
+          <div class="config-section">
+            <div class="config-label">Access Mode</div>
+            <div class="pw-toggle">
+              <button class="pw-btn active" id="noPwBtn">No Password</button>
+              <button class="pw-btn" id="pwBtn">🔐 Password</button>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Variant Panel -->
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-icon">◈</div>
+          <div class="panel-title">Enc Variant</div>
+        </div>
+        <div class="panel-body">
+          <div class="variant-grid" id="variantGrid"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT: Code -->
+    <div class="code-section">
+      <!-- Input -->
+      <div class="code-box">
+        <div class="code-box-header">
+          <div class="code-box-title">
+            <span class="dot dot-r"></span>
+            <span class="dot dot-y"></span>
+            <span class="dot dot-g"></span>
+            &nbsp;INPUT — Lua Source Code
+          </div>
+          <div class="code-box-actions">
+            <button class="action-btn" onclick="clearInput()">CLEAR</button>
+            <button class="action-btn" onclick="loadSample()">SAMPLE</button>
+            <button class="action-btn run-btn" onclick="testInput()">▶ TEST</button>
+          </div>
+        </div>
+        <textarea id="inputCode" placeholder="-- Paste your Lua code here...
+-- Supports Lua 4, 5.1, 5.2, 5.3, 5.4, LuaU, Roblox Lua
+
+local function greet(name)
+  print('Hello, ' .. name .. '!')
+end
+
+greet('World')"></textarea>
+      </div>
+
+      <!-- Obfuscate button -->
+      <div class="run-wrap">
+        <button class="main-run" id="obfBtn" onclick="startObfuscation()">
+          ◆ &nbsp; OBFUSCATE &nbsp; ◆
+        </button>
+      </div>
+
+      <!-- Progress -->
+      <div class="progress-wrap" id="progressWrap">
+        <div class="progress-header">
+          <div class="progress-label blink" id="progressLabel">Initializing...</div>
+          <div class="progress-right">
+            <div class="progress-eta" id="progressEta">ETA: —</div>
+            <div class="progress-pct" id="progressPct">0%</div>
+          </div>
+        </div>
+        <div class="progress-track">
+          <div class="progress-fill" id="progressFill"></div>
+        </div>
+        <div class="progress-steps" id="progressSteps"></div>
+      </div>
+
+      <!-- Error -->
+      <div class="error-msg" id="errorMsg"></div>
+
+      <!-- Output -->
+      <div class="code-box">
+        <div class="code-box-header">
+          <div class="code-box-title">
+            <span class="dot dot-r"></span>
+            <span class="dot dot-y"></span>
+            <span class="dot dot-g"></span>
+            &nbsp;OUTPUT — Obfuscated Code
+          </div>
+          <div class="code-box-actions">
+            <button class="action-btn" onclick="copyOutput()">COPY</button>
+            <button class="action-btn" onclick="downloadOutput()">DOWNLOAD</button>
+            <button class="action-btn run-btn" onclick="testOutput()">▶ TEST</button>
+          </div>
+        </div>
+        <textarea id="outputCode" readonly placeholder="-- Obfuscated output will appear here..."></textarea>
+      </div>
+
+      <!-- Result stats -->
+      <div class="result-stats" id="resultStats">
+        <div class="rs-item"><div class="rs-val" id="rs-orig">—</div><div class="rs-key">Original</div></div>
+        <div class="rs-item"><div class="rs-val" id="rs-obf">—</div><div class="rs-key">Obfuscated</div></div>
+        <div class="rs-item"><div class="rs-val" id="rs-ratio">—</div><div class="rs-key">Size Ratio</div></div>
+        <div class="rs-item"><div class="rs-val" id="rs-time">—</div><div class="rs-key">Time</div></div>
+        <div class="rs-item"><div class="rs-val" id="rs-level">—</div><div class="rs-key">Level</div></div>
+        <div class="rs-item"><div class="rs-val" id="rs-variant">—</div><div class="rs-key">Variant</div></div>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    <div>XAYZENC &nbsp;·&nbsp; <span>Lua Obfuscation Engine</span> &nbsp;·&nbsp; v3.0.0</div>
+    <div style="margin-top:8px">Multi-Layer Protection &nbsp;·&nbsp; 12 Variants &nbsp;·&nbsp; 7 Levels</div>
+  </footer>
+</div>
+
+<!-- Password Modal -->
+<div class="modal-backdrop" id="pwModal">
+  <div class="modal" id="pwModalBox">
+    <div style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--purple),var(--gold),var(--cyan))"></div>
+    <div class="modal-titlebar" id="modalTitlebar">
+      <div class="modal-title">🔐 &nbsp; PASSWORD LOCK</div>
+      <div class="modal-controls">
+        <button class="modal-ctrl" onclick="minimizeModal()" title="Minimize">─</button>
+        <button class="modal-ctrl" onclick="toggleFullscreen()" title="Fullscreen" id="fullscreenBtn">⛶</button>
+        <button class="modal-ctrl close-btn" onclick="closeModal()" title="Close">✕</button>
+      </div>
+    </div>
+    <div class="modal-body">
+      <div class="modal-icon">🔑</div>
+      <div class="modal-desc">
+        Set a password to lock this obfuscated code.<br/>
+        The script will require <code style="color:var(--gold)">_XayzPW_</code> to be set before execution.
+      </div>
+      <div class="modal-input-wrap">
+        <input type="password" id="pwInput" placeholder="Enter password..." autocomplete="off"/>
+        <span class="pw-eye" onclick="togglePwVis()">👁</span>
+      </div>
+      <div class="modal-actions">
+        <button class="modal-btn cancel" onclick="closeModal()">CANCEL</button>
+        <button class="modal-btn confirm" onclick="confirmPassword()">CONFIRM</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ── State ──
+let selectedVersion = '5.1';
+let selectedVariant = 0;
+let selectedLevel = 4;
+let passwordMode = false;
+let currentPassword = '';
+let isMinimized = false;
+let isFullscreen = false;
+
+const VARIANT_NAMES = [
+  'XOR Cipher','Byte Shuffle','Char Split','Decimal Array',
+  'Base64 Wrap','Hex Encode','ROT Cipher','Multi-XOR',
+  'Chunk Fusion','Opaque Weave','Stack Morph','VM Inject'
+];
+
+const LEVEL_DESCS = [
+  '','Basic — String Encoding Only',
+  'Mild — + Variable Mangling',
+  'Standard — + Dead Code Injection',
+  'Strong — + Number Obfuscation',
+  'Heavy — + Control Flow Obfuscation',
+  'Extreme — + Code Interleaving',
+  'MAX — Full VM Layer (Strongest)',
+];
+
+const STEPS = ['Parse','Encode Strings','Mangle Vars','Dead Code','Obfuscate Numbers','Control Flow','VM Wrap','Finalize'];
+
+// ── Init ──
+function initVariants() {
+  const grid = document.getElementById('variantGrid');
+  grid.innerHTML = '';
+  VARIANT_NAMES.forEach((name, i) => {
+    const el = document.createElement('div');
+    el.className = 'variant-card' + (i === 0 ? ' active' : '');
+    el.innerHTML = `<div class="vc-num">V${(i+1).toString().padStart(2,'0')}</div>${name}`;
+    el.onclick = () => selectVariant(i);
+    grid.appendChild(el);
+  });
+}
+
+function selectVariant(i) {
+  selectedVariant = i;
+  document.querySelectorAll('.variant-card').forEach((el, j) => {
+    el.classList.toggle('active', j === i);
+  });
+}
+
+function initVersions() {
+  document.querySelectorAll('.ver-badge').forEach(el => {
+    el.onclick = () => {
+      document.querySelectorAll('.ver-badge').forEach(e => e.classList.remove('active'));
+      el.classList.add('active');
+      selectedVersion = el.dataset.ver;
+    };
+  });
+}
+
+function initLevel() {
+  const slider = document.getElementById('levelSlider');
+  slider.oninput = () => {
+    selectedLevel = parseInt(slider.value);
+    document.getElementById('levelNum').textContent = selectedLevel;
+    document.getElementById('levelDesc').textContent = LEVEL_DESCS[selectedLevel];
+  };
+}
+
+// ── Password UI ──
+document.getElementById('noPwBtn').onclick = () => {
+  passwordMode = false;
+  currentPassword = '';
+  document.getElementById('noPwBtn').classList.add('active');
+  document.getElementById('pwBtn').classList.remove('active');
+};
+document.getElementById('pwBtn').onclick = () => {
+  document.getElementById('pwModal').classList.add('show');
+};
+
+function closeModal() {
+  document.getElementById('pwModal').classList.remove('show');
+  if (!currentPassword) {
+    document.getElementById('pwBtn').classList.remove('active');
+    document.getElementById('noPwBtn').classList.add('active');
+    passwordMode = false;
+  }
+}
+function confirmPassword() {
+  const pw = document.getElementById('pwInput').value.trim();
+  if (!pw) { showToast('Enter a password!', true); return; }
+  currentPassword = pw;
+  passwordMode = true;
+  document.getElementById('pwBtn').classList.add('active');
+  document.getElementById('noPwBtn').classList.remove('active');
+  document.getElementById('pwModal').classList.remove('show');
+  showToast('Password set! 🔐');
+}
+function togglePwVis() {
+  const inp = document.getElementById('pwInput');
+  inp.type = inp.type === 'password' ? 'text' : 'password';
+}
+
+// ── Modal drag ──
+let dragging = false, dragOffX = 0, dragOffY = 0;
+document.getElementById('modalTitlebar').addEventListener('mousedown', e => {
+  if (isFullscreen) return;
+  dragging = true;
+  const box = document.getElementById('pwModalBox');
+  const rect = box.getBoundingClientRect();
+  dragOffX = e.clientX - rect.left;
+  dragOffY = e.clientY - rect.top;
+  box.style.position = 'fixed';
+  box.style.margin = '0';
+});
+document.addEventListener('mousemove', e => {
+  if (!dragging) return;
+  const box = document.getElementById('pwModalBox');
+  box.style.left = (e.clientX - dragOffX) + 'px';
+  box.style.top  = (e.clientY - dragOffY) + 'px';
+});
+document.addEventListener('mouseup', () => { dragging = false; });
+
+function minimizeModal() {
+  const box = document.getElementById('pwModalBox');
+  if (!isMinimized) {
+    box.style.height = '50px'; box.style.overflow = 'hidden';
+    isMinimized = true;
+  } else {
+    box.style.height = ''; box.style.overflow = '';
+    isMinimized = false;
+  }
+}
+function toggleFullscreen() {
+  const box = document.getElementById('pwModalBox');
+  const back = document.getElementById('pwModal');
+  isFullscreen = !isFullscreen;
+  box.classList.toggle('fullscreen', isFullscreen);
+  if (isFullscreen) { box.style.left=''; box.style.top=''; back.style.alignItems='center'; }
+  document.getElementById('fullscreenBtn').textContent = isFullscreen ? '⊡' : '⛶';
+}
+
+// ── Progress simulation ──
+function animateProgress(expectedMs, onDone) {
+  const wrap = document.getElementById('progressWrap');
+  const fill = document.getElementById('progressFill');
+  const pct  = document.getElementById('progressPct');
+  const eta  = document.getElementById('progressEta');
+  const label = document.getElementById('progressLabel');
+  const stepsEl = document.getElementById('progressSteps');
+
+  wrap.classList.add('show');
+  fill.style.width = '0%';
+
+  // build step pills
+  const steps = STEPS.slice(0, Math.min(STEPS.length, selectedLevel + 1));
+  stepsEl.innerHTML = steps.map(s => `<div class="step-pill">${s}</div>`).join('');
+  const pills = stepsEl.querySelectorAll('.step-pill');
+
+  let progress = 0;
+  const start = Date.now();
+  let stepIdx = 0;
+
+  const interval = setInterval(() => {
+    const elapsed = Date.now() - start;
+    // Non-linear: fast at start, slow near 95%
+    const natural = Math.min(95, (elapsed / expectedMs) * 100 * 1.3);
+    if (natural > progress) progress = natural;
+
+    fill.style.width = progress + '%';
+    pct.textContent = Math.round(progress) + '%';
+
+    const remaining = Math.max(0, expectedMs - elapsed);
+    eta.textContent = remaining > 1000 ? `ETA: ${(remaining/1000).toFixed(1)}s` : 'ETA: <1s';
+
+    // activate steps
+    const newStep = Math.floor((progress / 100) * steps.length);
+    if (newStep > stepIdx && stepIdx < pills.length) {
+      if (stepIdx > 0) pills[stepIdx - 1].className = 'step-pill done';
+      pills[stepIdx].className = 'step-pill active';
+      label.textContent = steps[stepIdx] + '...';
+      stepIdx = newStep;
+    }
+
+    if (progress >= 95) { clearInterval(interval); onDone(); }
+  }, 80);
+
+  return {
+    complete: () => {
+      clearInterval(interval);
+      setTimeout(() => {
+        fill.style.width = '100%'; pct.textContent = '100%'; eta.textContent = 'Done';
+        label.classList.remove('blink'); label.textContent = '✓ Complete';
+        pills.forEach(p => p.className = 'step-pill done');
+      }, 100);
+    }
+  };
+}
+
+// ── Main obfuscation ──
+async function startObfuscation() {
+  const code = document.getElementById('inputCode').value.trim();
+  if (!code) { showToast('Paste your Lua code first!', true); return; }
+
+  const btn = document.getElementById('obfBtn');
+  btn.disabled = true;
+
+  document.getElementById('errorMsg').classList.remove('show');
+  document.getElementById('resultStats').classList.remove('show');
+  document.getElementById('outputCode').value = '';
+
+  // Estimate time based on level + code size
+  const estMs = 400 + selectedLevel * 200 + Math.min(code.length / 10, 2000);
+  const prog = animateProgress(estMs, () => {});
+
+  try {
+    const resp = await fetch('/api/obfuscate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        code,
+        level: selectedLevel,
+        variant: selectedVariant,
+        password: currentPassword,
+        luaVersion: selectedVersion,
+      }),
+    });
+    const data = await resp.json();
+    prog.complete();
+
+    setTimeout(() => {
+      if (data.success) {
+        document.getElementById('outputCode').value = data.result;
+        const s = data.stats;
+        document.getElementById('rs-orig').textContent = formatBytes(s.originalSize);
+        document.getElementById('rs-obf').textContent  = formatBytes(s.obfuscatedSize);
+        document.getElementById('rs-ratio').textContent = s.ratio + '%';
+        document.getElementById('rs-time').textContent  = s.timeMs + 'ms';
+        document.getElementById('rs-level').textContent = 'L' + s.level;
+        document.getElementById('rs-variant').textContent = s.variant.split(' ')[0];
+        document.getElementById('resultStats').classList.add('show');
+        showToast('Obfuscation complete! ✓');
+      } else {
+        showError(data.error || 'Unknown error');
+      }
+      btn.disabled = false;
+    }, 300);
+  } catch (e) {
+    prog.complete();
+    showError('Server error: ' + e.message);
+    btn.disabled = false;
+  }
+}
+
+// ── Helpers ──
+function formatBytes(n) {
+  if (n < 1024) return n + 'B';
+  return (n / 1024).toFixed(1) + 'KB';
+}
+function showError(msg) {
+  const el = document.getElementById('errorMsg');
+  el.textContent = '✗ ' + msg;
+  el.classList.add('show');
+  showToast(msg, true);
+}
+function showToast(msg, err = false) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'toast show' + (err ? ' error-toast' : '');
+  setTimeout(() => el.classList.remove('show'), 3000);
+}
+function clearInput() { document.getElementById('inputCode').value = ''; }
+function loadSample() {
+  document.getElementById('inputCode').value = `-- XayzEnc Sample Script
+local secret = "MySecretValue_12345"
+local api_url = "https://api.example.com/v1/data"
+
+local function encrypt(data, key)
+  local result = {}
+  for i = 1, #data do
+    local byte = string.byte(data, i)
+    result[i] = string.char(byte ~ key)
+  end
+  return table.concat(result)
+end
+
+local function fetchData(url)
+  print("Fetching: " .. url)
+  return {status = 200, body = secret}
+end
+
+local encoded = encrypt(secret, 42)
+local response = fetchData(api_url)
+print("Status: " .. response.status)
+print("Encoded: " .. encoded)`;
+}
+function copyOutput() {
+  const txt = document.getElementById('outputCode').value;
+  if (!txt) { showToast('Nothing to copy!', true); return; }
+  navigator.clipboard.writeText(txt).then(() => showToast('Copied to clipboard! ✓'));
+}
+function downloadOutput() {
+  const txt = document.getElementById('outputCode').value;
+  if (!txt) { showToast('Nothing to download!', true); return; }
+  const a = document.createElement('a');
+  a.href = 'data:text/plain;charset=utf-8,' + encodeURIComponent(txt);
+  a.download = 'xayzenc_output.lua';
+  a.click();
+  showToast('Downloaded! ✓');
+}
+function testInput() { showToast('Run via your Lua executor — copy code first.'); }
+function testOutput() {
+  const txt = document.getElementById('outputCode').value;
+  if (!txt) { showToast('No output yet!', true); return; }
+  showToast('Copy output and run in your Lua executor.');
+}
+
+// ── Startup ──
+initVariants();
+initVersions();
+initLevel();
+</script>
+</body>
+</html>
